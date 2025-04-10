@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: music_postgres
+    environment:
+      POSTGRES_DB: musicdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Sadique785
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - music_network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: music_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false 
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - music_network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+
+volumes:
+  postgres_data:
+  es_data:
+
+networks:
+  music_network:
