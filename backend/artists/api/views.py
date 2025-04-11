@@ -1,12 +1,35 @@
 # views.py
 from elasticsearch_dsl import Q
+from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..documents import ArtistDocument
 from ..artist_abbreviations import ARTIST_ABBREVIATIONS
+from rest_framework.generics import ListAPIView
+from rest_framework.pagination import PageNumberPagination
+from ..models import Artist
+from .serializers import ArtistSerializer
 
 
+class ArtistPagination(PageNumberPagination):
+    page_size = 12
+    page_size_query_param = 'limit'
+    max_page_size = 100
 
+    def get_paginated_response(self, data):
+        response = super().get_paginated_response(data)
+        response.data['has_next'] = self.page.has_next()
+        return response
+
+class ArtistListView(ListAPIView):
+    queryset = Artist.objects.all()
+    serializer_class = ArtistSerializer
+    pagination_class = ArtistPagination
+
+class ArtistDetailView(generics.RetrieveAPIView):
+    queryset = Artist.objects.all()
+    serializer_class = ArtistSerializer
+    lookup_field = 'id'
 
 class ArtistSearchView(APIView):
     def get(self, request):
