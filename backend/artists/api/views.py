@@ -10,7 +10,7 @@ from ..artist_abbreviations import ARTIST_ABBREVIATIONS
 
 class ArtistSearchView(APIView):
     def get(self, request):
-        query = request.query_params.get('q', '')
+        query = request.query_params.get('query', '')
         if not query:
             return Response({"results": [], "correction": None})
         
@@ -97,10 +97,9 @@ class ArtistSearchView(APIView):
             "results": results,
             "correction": correction
         })
-
 class ArtistAutocompleteView(APIView):
     def get(self, request):
-        query = request.query_params.get('q', '')
+        query = request.query_params.get('query', '')
         if not query:
             return Response([])
         
@@ -110,7 +109,7 @@ class ArtistAutocompleteView(APIView):
             'name_suggestions',
             query,
             completion={
-                'field': 'name.suggest',  # Use name.suggest instead of name.completion
+                'field': 'name.suggest',
                 'size': 10
             }
         )
@@ -124,10 +123,13 @@ class ArtistAutocompleteView(APIView):
         # Extract suggestions from the completion suggester
         if hasattr(suggest_response, 'suggest') and 'name_suggestions' in suggest_response.suggest:
             for suggestion in suggest_response.suggest.name_suggestions[0].options:
+                # Retrieve the document to get all fields
+                artist_doc = ArtistDocument.get(id=suggestion._id)
                 suggestions.append({
-                    'id': suggestion._id,  # Access the ID correctly
-                    'name': suggestion.text,  # Access the suggestion text
-                    'source': 'completion'
+                    'id': suggestion._id,
+                    'name': suggestion.text,
+                    'profile_picture': artist_doc.profile_picture if hasattr(artist_doc, 'profile_picture') else None,
+                    'source': 'completion',
                 })
         
         # If we don't have enough suggestions, fall back to edge n-gram search
@@ -152,7 +154,8 @@ class ArtistAutocompleteView(APIView):
                     suggestions.append({
                         'id': hit.meta.id,
                         'name': hit.name,
-                        'source': 'search'
+                        'profile_picture': hit.profile_picture if hasattr(hit, 'profile_picture') else None,
+                        'source': 'search',
                     })
         
         return Response(suggestions)
