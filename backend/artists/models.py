@@ -15,6 +15,10 @@ class Artist(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def get_popularity(self):
+
+        return 0 
 
 class NewArtist(models.Model):
     name = models.CharField(max_length=255, db_index=True)
