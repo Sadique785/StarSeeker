@@ -5,6 +5,7 @@ import base64
 import logging
 import requests
 import concurrent.futures
+import json
 from typing import Dict, List, Optional, Tuple
 import django
 from django.db import transaction
@@ -32,7 +33,7 @@ from artists.models import Artist
 class SpotifyGenreFetcher:
     """Class to fetch artist genres from Spotify API and update database."""
     
-    def __init__(self, client_id: str, client_secret: str, batch_size: int = 100):
+    def __init__(self, client_id: str, client_secret: str, batch_size: int = 100, checkpoint_file: str = "spotify_checkpoint.json"):
         """
         Initialize the fetcher with Spotify API credentials.
         
@@ -40,6 +41,7 @@ class SpotifyGenreFetcher:
             client_id: Spotify API client ID
             client_secret: Spotify API client secret
             batch_size: Number of artists to process in each batch
+            checkpoint_file: File to store checkpoint data for resuming
         """
         self.client_id = client_id
         self.client_secret = client_secret
@@ -50,6 +52,7 @@ class SpotifyGenreFetcher:
         self.default_headers = {
             'Content-Type': 'application/json',
         }
+        self.checkpoint_file = checkpoint_file
         
         # Stats tracking
         self.stats = {
@@ -59,6 +62,58 @@ class SpotifyGenreFetcher:
             'errors': 0,
             'skipped': 0,
         }
+        
+        # Load checkpoint if exists
+        self.last_processed_id = self.load_checkpoint()
+    
+    def save_checkpoint(self, artist_id: int) -> None:
+        """
+        Save the last processed artist ID to the checkpoint file.
+        
+        Args:
+            artist_id: ID of the last processed artist
+        """
+        checkpoint_data = {
+            'last_processed_id': artist_id,
+            'timestamp': time.time(),
+            'stats': self.stats
+        }
+        
+        try:
+            with open(self.checkpoint_file, 'w') as f:
+                json.dump(checkpoint_data, f)
+            logger.info(f"Checkpoint saved: Last processed artist ID {artist_id}")
+        except Exception as e:
+            logger.error(f"Error saving checkpoint: {str(e)}")
+    
+    def load_checkpoint(self) -> Optional[int]:
+        """
+        Load the last processed artist ID from the checkpoint file.
+        
+        Returns:
+            Last processed artist ID if checkpoint exists, None otherwise
+        """
+        if not os.path.exists(self.checkpoint_file):
+            logger.info("No checkpoint file found, starting from the beginning")
+            return None
+        
+        try:
+            with open(self.checkpoint_file, 'r') as f:
+                checkpoint_data = json.load(f)
+            
+            last_id = checkpoint_data.get('last_processed_id')
+            saved_stats = checkpoint_data.get('stats', {})
+            
+            # Restore stats from checkpoint
+            if saved_stats:
+                self.stats = saved_stats
+                logger.info(f"Restored stats from checkpoint: {self.stats}")
+            
+            logger.info(f"Resuming from checkpoint: Last processed artist ID {last_id}")
+            return last_id
+        except Exception as e:
+            logger.error(f"Error loading checkpoint: {str(e)}. Starting from the beginning.")
+            return None
     
     def authenticate(self) -> None:
         """Obtain an access token from Spotify API."""
@@ -179,6 +234,9 @@ class SpotifyGenreFetcher:
             artist.genre = primary_genre
             artist.save(update_fields=['genre'])
             self.stats['updated'] += 1
+            
+            # Save checkpoint after processing each artist
+            self.save_checkpoint(artist.id)
             return True
         except Exception as e:
             logger.error(f"Error saving genre for artist {artist.name}: {str(e)}")
@@ -198,6 +256,8 @@ class SpotifyGenreFetcher:
             except Exception as e:
                 logger.error(f"Error processing artist {artist.name}: {str(e)}")
                 self.stats['errors'] += 1
+                # Still save checkpoint on error to mark this artist as processed
+                self.save_checkpoint(artist.id)
     
     def process_all(self, max_workers: int = 4) -> Dict:
         """
@@ -209,11 +269,18 @@ class SpotifyGenreFetcher:
         Returns:
             Statistics dictionary
         """
-        total_artists = Artist.objects.filter(
+        # Build the base query
+        base_query = Artist.objects.filter(
             Q(genre__isnull=True) | 
             Q(genre__exact='') |
             Q(genre__iexact='Unknown')
-        ).count()
+        )
+        
+        # If we have a checkpoint, add condition to only process artists with ID > last_processed_id
+        if self.last_processed_id is not None:
+            base_query = base_query.filter(id__gt=self.last_processed_id)
+        
+        total_artists = base_query.count()
         
         logger.info(f"Found {total_artists} artists to process")
         self.stats['total'] = total_artists
@@ -224,11 +291,7 @@ class SpotifyGenreFetcher:
             
             offset = 0
             while offset < total_artists:
-                artists_batch = list(Artist.objects.filter(
-                    Q(genre__isnull=True) | 
-                    Q(genre__exact='') |
-                    Q(genre__iexact='Unknown')
-                ).order_by('id')[offset:offset+self.batch_size])
+                artists_batch = list(base_query.order_by('id')[offset:offset+self.batch_size])
                 
                 if not artists_batch:
                     break
@@ -267,20 +330,26 @@ def main():
     fetcher = SpotifyGenreFetcher(
         client_id=client_id,
         client_secret=client_secret,
-        batch_size=50  # Process 50 artists at a time
+        batch_size=50,  # Process 50 artists at a time
+        checkpoint_file="spotify_checkpoint.json"  # File to store checkpoint data
     )
     
-    start_time = time.time()
-    stats = fetcher.process_all(max_workers=4)  # Use 4 parallel workers
-    end_time = time.time()
-    
-    print("\n--- Processing complete ---")
-    print(f"Total artists: {stats['total']}")
-    print(f"Updated: {stats['updated']}")
-    print(f"Not found: {stats['not_found']}")
-    print(f"Errors: {stats['errors']}")
-    print(f"Skipped: {stats['skipped']}")
-    print(f"Time taken: {(end_time - start_time) / 60:.2f} minutes")
+    try:
+        start_time = time.time()
+        stats = fetcher.process_all(max_workers=4)  # Use 4 parallel workers
+        end_time = time.time()
+        
+        print("\n--- Processing complete ---")
+        print(f"Total artists: {stats['total']}")
+        print(f"Updated: {stats['updated']}")
+        print(f"Not found: {stats['not_found']}")
+        print(f"Errors: {stats['errors']}")
+        print(f"Skipped: {stats['skipped']}")
+        print(f"Time taken: {(end_time - start_time) / 60:.2f} minutes")
+    except KeyboardInterrupt:
+        print("\n--- Processing interrupted by user ---")
+        print("You can resume processing by running the script again")
+        print("The script will continue from the last saved checkpoint")
 
 
 if __name__ == '__main__':

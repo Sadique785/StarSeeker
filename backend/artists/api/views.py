@@ -1,5 +1,6 @@
 # views.py
 from elasticsearch_dsl import Q
+from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from ..documents import ArtistDocument
@@ -21,10 +22,14 @@ class ArtistPagination(PageNumberPagination):
         return response
 
 class ArtistListView(ListAPIView):
-    queryset = Artist.objects.all().order_by('id')
+    queryset = Artist.objects.all()
     serializer_class = ArtistSerializer
     pagination_class = ArtistPagination
 
+class ArtistDetailView(generics.RetrieveAPIView):
+    queryset = Artist.objects.all()
+    serializer_class = ArtistSerializer
+    lookup_field = 'id'
 
 class ArtistSearchView(APIView):
     def get(self, request):
