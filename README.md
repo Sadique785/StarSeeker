@@ -1,4 +1,4 @@
-# StarSeekerStar Seeker Documentation
+Star Seeker Documentation
 Project Overview
 Star Seeker is a music artist search application that allows users to search through a database of 100,000+ artists, providing real-time auto-suggestions and displaying artist information (name, genre, profile picture, location).
 Technical Architecture
