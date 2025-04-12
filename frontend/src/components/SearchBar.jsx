@@ -23,7 +23,20 @@ function SearchBar({ setSelectedArtist, setSearchedArtists, onClearSearch }) {
         });
         console.log('autocomplete', response);
 
-        setSuggestions(response.data);
+        // Mark exact matches to prioritize in suggestions
+        const processedSuggestions = response.data.map(artist => ({
+          ...artist,
+          exactMatch: artist.name.toLowerCase() === query.toLowerCase()
+        }));
+        
+        // Sort to prioritize exact matches
+        processedSuggestions.sort((a, b) => {
+          if (a.exactMatch && !b.exactMatch) return -1;
+          if (!a.exactMatch && b.exactMatch) return 1;
+          return 0;
+        });
+
+        setSuggestions(processedSuggestions);
       } catch (error) {
         console.error('Error fetching autocomplete suggestions:', error);
       } finally {
@@ -36,18 +49,25 @@ function SearchBar({ setSelectedArtist, setSearchedArtists, onClearSearch }) {
   }, [query]);
 
   const handleSelectArtist = (artist) => {
-    // Just set the selected artist in parent component
-    setSelectedArtist(artist);
+    // Set the selected artist in parent component
+    // setSelectedArtist(artist);
+    // Update the search input with the selected artist's name
     setQuery(artist.name);
+    // Close autocomplete dropdown
     setSuggestions([]);
+    
+    // Optional: Perform a search with the selected artist to update results
+    handleSearch(null, artist.name);
   };
 
-  const handleSearch = async (e) => {
+  const handleSearch = async (e, searchQuery = null) => {
     if (e) {
       e.preventDefault();
     }
     
-    if (!query.trim()) {
+    const searchTerm = searchQuery || query;
+    
+    if (!searchTerm.trim()) {
       handleClearSearch();
       return;
     }
@@ -56,17 +76,17 @@ function SearchBar({ setSelectedArtist, setSearchedArtists, onClearSearch }) {
     
     try {
       const response = await api.get('/artists/search/', {
-        params: { query, page: 1, limit: 12 }
+        params: { query: searchTerm, page: 1, limit: 12 }
       });
       console.log('searched', response);
       
       // Set the search results in parent component with query and pagination info
       const { results, has_next } = response.data;
-      setSearchedArtists(results, query, has_next);
+      setSearchedArtists(results, searchTerm, has_next);
       setSuggestions([]); // Close autocomplete dropdown
     } catch (error) {
       console.error('Error performing search:', error);
-      setSearchedArtists([], query, false);
+      setSearchedArtists([], searchTerm, false);
     } finally {
       setIsLoadingSearch(false);
     }
@@ -87,7 +107,7 @@ function SearchBar({ setSelectedArtist, setSearchedArtists, onClearSearch }) {
 
   return (
     <div className="relative">
-      <div className="flex items-center bg-black bg-opacity-50 rounded-full overflow-hidden backdrop-blur-sm border border-gray-700">
+      <div className="flex items-center mt-10 bg-black bg-opacity-50 rounded-full overflow-hidden backdrop-blur-sm border border-gray-700">
         <input
           type="text"
           value={query}
@@ -110,8 +130,7 @@ function SearchBar({ setSelectedArtist, setSearchedArtists, onClearSearch }) {
         
         <button
           onClick={handleSearch}
-          // className="bg-gradient-to-r from-red-900 to-black  hover:from-red-800 hover:to-gray-900 px-6 py-3 text-white"
-          className=" px-6 py-3 text-white"
+          className="px-6 py-3 text-white"
         >
           {isLoadingSearch ? (
             <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -130,7 +149,7 @@ function SearchBar({ setSelectedArtist, setSearchedArtists, onClearSearch }) {
       {suggestions.length > 0 && (
         <AutocompleteSuggestions 
           suggestions={suggestions} 
-          onSelect={handleSelectArtist} 
+          onSelect={handleSelectArtist}
           isLoading={isLoadingAutocomplete}
         />
       )}

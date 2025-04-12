@@ -4,7 +4,6 @@ import ShimmerCard from './Shimmers/ShimmerCard';
 
 
 function FeaturedCards({ artists, onSelectArtist, lastArtistRef, isLoading }) {
-  // Show shimmer cards while loading initial data
   if (!artists || artists.length === 0) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full max-w-6xl">

@@ -130,14 +130,12 @@ function Home() {
   
   return (
     <div className="relative h-screen overflow-hidden">
-      {/* Background Video */}
       <BackgroundVideo />
       
       <div className="relative z-10 flex flex-col items-center h-full">
         <Header />
         
-        {/* Search Bar */}
-        <div className="w-full max-w-2xl px-4 mt-6">
+        <div className="w-full max-w-2xl px-4 mt-16">
           <SearchBar 
             setSelectedArtist={setSelectedArtist}
             setSearchedArtists={handleSearchResults}
@@ -145,9 +143,7 @@ function Home() {
           />
         </div>
         
-        {/* Content Area */}
         <div className="flex-1 w-full px-4 mt-10 overflow-auto">
-          {/* Show search results if search is active */}
           {isSearchActive ? (
              <div>
              <h2 className="text-2xl font-bold text-white mb-6 text-center">Search Results</h2>
@@ -215,7 +211,6 @@ function Home() {
               )}
             </div>
           ) : (
-            /* Show featured artists if no search results */
             <div>
               <h2 className="text-2xl font-bold text-white mb-6 text-center">Featured Artists</h2>
               <div className="flex justify-center">
