@@ -1,0 +1,65 @@
+# Virtualenv folders
+venv/
+env/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Django specific
+*.log
+*.pot
+*.pyc
+db.sqlite3
+media/
+staticfiles/
+
+# Environment variables
+.env
+
+# VSCode / IDE
+.vscode/
+.idea/
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Migrations (optional: if you want clean control over migrations)
+*/migrations/__pycache__/
+*/migrations/*.pyc
+*/migrations/*.pyo
+*/migrations/*.orig
+# optional: ignore migration files themselves during early dev
+# */migrations/*.py
+
+# Pytest
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+
+# node (if frontend is inside repo)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
+backend/spotify_popularity_checkpoint.json
+spotify_checkpoint.json
