@@ -52,8 +52,7 @@ class ArtistDocument(Document):
         fields = []
     
     def prepare_popularity(self, instance):
-        # This method will be called to prepare the popularity field
-        # It's a better place to implement fallback logic than using default
+
         try:
             return instance.get_popularity()
         except (AttributeError, TypeError):

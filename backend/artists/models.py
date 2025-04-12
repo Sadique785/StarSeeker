@@ -5,6 +5,8 @@ class Artist(models.Model):
     genre = models.CharField(max_length=255)
     profile_picture = models.URLField(max_length=500, blank=True, null=True)
     location = models.CharField(max_length=255)
+    popularity = models.IntegerField(default=0) 
+
 
     class Meta:
         indexes = [
@@ -18,7 +20,7 @@ class Artist(models.Model):
     
     def get_popularity(self):
 
-        return 0 
+        return self.popularity
 
 class NewArtist(models.Model):
     name = models.CharField(max_length=255, db_index=True)

@@ -61,3 +61,5 @@ yarn-error.log
 # OS-specific
 .DS_Store
 Thumbs.db
+backend/spotify_popularity_checkpoint.json
+spotify_checkpoint.json

@@ -36,7 +36,6 @@ class SpotifyClient:
         Ensure we have a valid access token, obtaining a new one if needed
         """
         current_time = time.time()
-        # Add a 60-second buffer to avoid edge cases where token might expire during request
         if not self.access_token or current_time >= (self.token_expiry - 60):
             self._get_access_token()
     
@@ -53,7 +52,6 @@ class SpotifyClient:
             
             response_data = response.json()
             self.access_token = response_data.get("access_token")
-            # Set expiry time based on expires_in value (typically 3600 seconds / 1 hour)
             expires_in = response_data.get("expires_in", 3600)
             self.token_expiry = time.time() + expires_in
             
@@ -75,7 +73,6 @@ class SpotifyClient:
             if method.lower() == "get":
                 response = requests.get(url, headers=headers, params=params)
             else:
-                # Handle other methods if needed in the future
                 raise ValueError(f"Unsupported HTTP method: {method}")
             
             response.raise_for_status()
@@ -84,7 +81,6 @@ class SpotifyClient:
             status_code = e.response.status_code
             error_msg = f"Spotify API error: {status_code}"
             
-            # Try to extract error details from response
             try:
                 error_data = e.response.json()
                 if "error" in error_data:
@@ -97,11 +93,9 @@ class SpotifyClient:
             
             logger.error(error_msg)
             
-            # Handle specific error codes
-            if status_code == 429:  # Too Many Requests
+            if status_code == 429: 
                 retry_after = int(e.response.headers.get("Retry-After", 3))
                 logger.warning(f"Rate limited by Spotify. Retry after {retry_after} seconds")
-                # You might want to implement retry logic here
             
             raise
         except requests.exceptions.RequestException as e:
@@ -140,12 +134,9 @@ class SpotifyClient:
             if not artists:
                 logger.info(f"No artists found for '{name}'")
                 return None
-            
-            # Simple algorithm: return the first (most relevant) result
-            # Could be improved with better name comparison logic
+
             best_match = artists[0]
             
-            # Log if the name doesn't exactly match (ignoring case)
             if best_match["name"].lower() != name.lower():
                 logger.info(f"Best match for '{name}' is '{best_match['name']}' (not exact)")
             
